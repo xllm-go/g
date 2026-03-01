@@ -114,7 +114,8 @@ func Initialized(addr string) {
 		Logger: logger.Logger(),
 	}))
 
-	app.Use(func(ctx fiber.Ctx) (err error) {
+	app.Use(func(ctx fiber.Ctx) error {
+		logger.Sugar().Infof("-------------------- NEW START --------------------")
 		abort, _ := newAbort(ctx)
 		ctx.SetContext(abort)
 		//defer cancel()

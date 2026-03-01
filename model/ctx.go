@@ -73,7 +73,7 @@ func write(w *bufio.Writer, msg interface{}) error {
 		data = v
 	case error:
 		if v == io.EOF {
-			data = "[done]"
+			data = "[DONE]"
 		} else {
 			event = "error"
 			data = v.Error()

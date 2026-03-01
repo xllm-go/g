@@ -8,6 +8,8 @@ import (
 
 type chunkExpr int8
 
+const EOF = "[EOF]"
+
 type funcStruct struct {
 	name      string
 	arguments string
@@ -76,11 +78,6 @@ func CreateStreamResponse(chunkBodies *ChunkBodies, created int64) (response *Re
 			},
 		}
 
-		if chunkBodies.function.name == "" {
-			delete(response.Choices[0].Delta.ToolCalls[0], "id")
-			delete(response.Choices[0].Delta.ToolCalls[0], "type")
-		}
-
 	case 1:
 		response.Choices = []Choice{
 			{
@@ -96,6 +93,7 @@ func CreateStreamResponse(chunkBodies *ChunkBodies, created int64) (response *Re
 			},
 		}
 	}
+
 	return
 }
 
@@ -137,6 +135,25 @@ func CreateResponse(chunkBodies *ChunkBodies, created int64) (response *Response
 	}
 
 	return
+}
+
+func SplitEach(content string, w func(chunk string)) {
+	pos := 0
+	runeStr := []rune(content)
+	step := 30
+
+	for {
+		contentL := len(runeStr[pos:])
+		if contentL > step {
+			w(string(runeStr[pos : pos+step]))
+			pos += step
+			continue
+		}
+
+		w(string(runeStr[pos:]))
+		time.Sleep(100 * time.Millisecond)
+		break
+	}
 }
 
 func hex(n int) string {
