@@ -115,9 +115,9 @@ func Initialized(addr string) {
 	}))
 
 	app.Use(func(ctx fiber.Ctx) (err error) {
-		abort, cancel := newAbort(ctx)
+		abort, _ := newAbort(ctx)
 		ctx.SetContext(abort)
-		defer cancel()
+		//defer cancel()
 		return ctx.Next()
 	})
 
