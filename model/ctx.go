@@ -11,6 +11,11 @@ import (
 	"github.com/xllm-go/g/logger"
 )
 
+const (
+	Matchers    = "matchers"
+	ThinkReason = "think_reason"
+)
+
 type Ctx struct {
 	ctx fiber.Ctx
 	Record[string, any]

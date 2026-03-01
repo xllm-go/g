@@ -1,11 +1,10 @@
-package internal
+package env
 
 import (
+	"iter"
 	"os"
 	"os/signal"
 	"syscall"
-
-	v1 "github.com/xllm-go/g/internal/v1"
 )
 
 var (
@@ -13,14 +12,6 @@ var (
 	exits  = make([]func(), 0)
 	panics = make([]func(interface{}), 0)
 )
-
-func init() {
-	v1.SetPanic(func(err interface{}) {
-		for _, yield := range panics {
-			yield(err)
-		}
-	})
-}
 
 func AddPanic(apply func(interface{})) { panics = append(panics, apply) }
 func AddInitialized(apply func())      { inits = append(inits, apply) }
@@ -40,4 +31,12 @@ func Initialized() {
 		}
 		os.Exit(0)
 	}(osSignal)
+}
+
+func Panics() iter.Seq[func(interface{})] {
+	return func(yield func(func(interface{})) bool) {
+		for _, w := range panics {
+			yield(w)
+		}
+	}
 }

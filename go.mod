@@ -3,7 +3,9 @@ module github.com/xllm-go/g
 go 1.25.0
 
 require (
+	github.com/bincooo/ago v0.0.0-20260209031442-3333e4ce454e
 	github.com/bincooo/ja3 v0.0.0-20250809061016-e32ddf230191
+	github.com/dlclark/regexp2 v1.11.5
 	github.com/elazarl/goproxy v1.8.1
 	github.com/go-vgo/robotgo v1.0.0
 	github.com/gofiber/contrib/v3/zap v1.0.0
@@ -27,6 +29,8 @@ require (
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/go-viper/mapstructure/v2 v2.4.0 // indirect
 	github.com/godbus/dbus/v5 v5.2.0 // indirect
+	github.com/gofiber/contrib/fiberzap/v2 v2.1.6 // indirect
+	github.com/gofiber/fiber/v2 v2.52.11 // indirect
 	github.com/gofiber/schema v1.7.0 // indirect
 	github.com/gofiber/utils/v2 v2.0.2 // indirect
 	github.com/google/uuid v1.6.0 // indirect
@@ -37,6 +41,7 @@ require (
 	github.com/lufia/plan9stats v0.0.0-20251013123823-9fd1530e3ec3 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
+	github.com/mattn/go-runewidth v0.0.16 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/otiai10/gosseract/v2 v2.4.1 // indirect
@@ -44,6 +49,7 @@ require (
 	github.com/philhofer/fwd v1.2.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/power-devops/perfstat v0.0.0-20240221224432-82ca36839d55 // indirect
+	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/robotn/xgb v0.10.0 // indirect
 	github.com/robotn/xgbutil v0.10.0 // indirect
 	github.com/sagikazarmark/locafero v0.11.0 // indirect

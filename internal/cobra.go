@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
+	"github.com/xllm-go/g/env"
 	"github.com/xllm-go/g/internal/v1"
 	"github.com/xllm-go/g/logger"
 )
@@ -28,16 +29,16 @@ var (
 				LogLevel(cArgs.LogLevel),
 			)
 
-			err := v1.InitEnviron()
+			err := env.InitEnviron()
 			if err != nil {
 				logger.Sugar().Fatalf("config.yaml is not exists; %v", err)
 			}
 
-			if port := v1.Env.GetInt("server.port"); port > 0 {
+			if port := env.Env.GetInt("server.port"); port > 0 {
 				cArgs.Port = port
 			}
 
-			Initialized()
+			env.Initialized()
 			if cArgs.MView {
 				println("模型可用列表:")
 				var hasModel = false

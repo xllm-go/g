@@ -1,16 +1,10 @@
-package response
+package model
 
 import (
-	"chatgpt-adapter/core/common"
-	"chatgpt-adapter/core/common/vars"
-	"github.com/gin-gonic/gin"
 	"strings"
-	"sync"
 
-	"chatgpt-adapter/core/common/inited"
-	"chatgpt-adapter/core/gin/inter"
-	"chatgpt-adapter/core/logger"
-	"github.com/iocgo/sdk/env"
+	"github.com/xllm-go/g/env"
+	"github.com/xllm-go/g/logger"
 
 	regexp "github.com/dlclark/regexp2"
 )
@@ -22,8 +16,13 @@ const (
 )
 
 var (
-	globalMatchers func(gtx *gin.Context, cb func(t byte, str string)) []inter.Matcher
+	globalMatchers func(ctx *Ctx) []Matcher
 )
+
+// 匹配器接口
+type Matcher interface {
+	Match(content string, over bool) (state int, result string)
+}
 
 type obj struct {
 	Match       string `mapstructure:"match"`
@@ -43,11 +42,11 @@ type symbolMatcher struct {
 }
 
 func init() {
-	inited.AddInitialized(func(env *env.Environment) {
+	env.AddInitialized(func() {
 		var objs []obj
-		err := env.UnmarshalKey("matcher", &objs)
+		err := env.Env.UnmarshalKey("matcher", &objs)
 		if err != nil {
-			logger.Fatal(err)
+			logger.Sugar().Fatal(err)
 		}
 		if len(objs) != 0 {
 			initMatchers(objs)
@@ -60,7 +59,7 @@ func initMatchers(objs []obj) {
 		return
 	}
 
-	globalMatchers = func(gtx *gin.Context, cb func(t byte, str string)) (matchers []inter.Matcher) {
+	globalMatchers = func(ctx *Ctx) (matchers []Matcher) {
 		for i, o := range objs {
 			match, over := o.Match, o.Over
 			maxLen := o.Max
@@ -69,30 +68,24 @@ func initMatchers(objs []obj) {
 			}
 
 			if o.Regex == "" {
-				logger.Errorf("no regular processing is configured: matcher[%d].regex", i)
+				logger.Sugar().Errorf("no regular processing is configured: matcher[%d].regex", i)
 				continue
 			}
 
 			compile := regexp.MustCompile(`"(.+)" *: *"(.*)"`, regexp.ECMAScript)
 			matched, err := compile.FindStringMatch(o.Regex)
 			if err != nil {
-				logger.Errorf("the format has not been written correctly: matcher[%d].regex ==> %v", i, err)
+				logger.Sugar().Errorf("the format has not been written correctly: matcher[%d].regex ==> %v", i, err)
 				continue
 			}
 
 			regex, replacement := matched.GroupByNumber(1).String(), matched.GroupByNumber(2).String()
 			c := regexp.MustCompile(regex, regexp.ECMAScript)
 			var matcher *symbolMatcher
-			onceExec := sync.OnceFunc(func() {
-				if o.Notice != "" {
-					cb(0, o.Notice)
-				}
-			})
 
 			matcher = &symbolMatcher{
 				Find: match,
 				H: func(index int, content string) (state int, cache, result string) {
-					onceExec()
 
 					if over != "" {
 						if !strings.Contains(content, over) {
@@ -108,16 +101,15 @@ func initMatchers(objs []obj) {
 						}
 					}
 
-					logger.Infof("execute matcher[%s] content:\n%s", matcher.Find, content)
+					logger.Sugar().Infof("execute matcher[%s] content:\n%s", matcher.Find, content)
 					result, err = c.Replace(content, replacement, 0, 1)
 					if o.ThinkReason && content != "" {
-						gtx.Set(vars.GinThinkReason, result)
-						cb(1, result)
+						ctx.Put(ThinkReason, result)
 						return MatMatched, cache, ""
 					}
 
 					if err != nil {
-						logger.Warn("compile failed: "+regex, err)
+						logger.Sugar().Warn("compile failed: "+regex, err)
 						return MatMatched, cache, content
 					}
 					return MatMatched, cache, result
@@ -129,68 +121,25 @@ func initMatchers(objs []obj) {
 	}
 }
 
-func NewMatchers(ctx *gin.Context, cb func(t byte, str string)) (slice []inter.Matcher) {
-	slice = make([]inter.Matcher, 0)
+func NewMatchers(ctx *Ctx) (slice []Matcher) {
+	slice = make([]Matcher, 0)
 	if globalMatchers != nil {
-		slice = append(slice, globalMatchers(ctx, cb)...)
+		slice = append(slice, globalMatchers(ctx)...)
 	}
-	slice = append(slice, newCancel(ctx)...)
 	return
 }
 
-func NewMatcher(find string, h func(index int, content string) (state int, cache, result string)) inter.Matcher {
+func NewMatcher(find string, h func(index int, content string) (state int, cache, result string)) Matcher {
 	return &symbolMatcher{
 		Find: find,
 		H:    h,
 	}
 }
 
-func newCancel(ctx *gin.Context) (slice []inter.Matcher) {
-	convertRole1, _ := ConvertRole(ctx, "user")
-	convertRole2, _ := ConvertRole(ctx, "system")
-	convertRole3, _ := ConvertRole(ctx, "assistant")
-
-	completion := common.GetGinCompletion(ctx)
-	sequences := completion.StopSequences
-	if IsDeepseek(completion.Model) {
-		sequences = append(sequences, strings.TrimSpace(deepseekEnd("assistant")))
-	}
-
-	once := true
-	for _, match := range append(sequences,
-		convertRole1,
-		convertRole2,
-		convertRole3,
-	) {
-		match = strings.TrimSpace(match)
-		if match == "" {
-			continue
-		}
-
-		slice = append(slice, &symbolMatcher{
-			Find: match,
-			H: func(index int, content string) (state int, cache, result string) {
-				if once && (match == strings.TrimSpace(convertRole3)) {
-					once = false
-					state = MatMatched
-					result = strings.Replace(content, match, "", -1)
-					return
-				}
-
-				state = MatMatched
-				result = EOF
-				logger.Infof("matched block [%s], will response stop ...", match)
-				return
-			},
-		})
-	}
-	return
-}
-
 // MAT_DEFAULT	没有命中，继续执行下一个。
 // MAT_MATCHING 匹配中，缓存消息不执行下一个。
 // MAT_MATCHED 	命中，不再执行下一个。
-func ExecMatchers(matchers []inter.Matcher, raw string, done bool) string {
+func ExecMatchers(matchers []Matcher, raw string, done bool) string {
 	s := MatDefault
 	for _, mat := range matchers {
 		s, raw = mat.Match(raw, done)

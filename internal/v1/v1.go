@@ -2,6 +2,7 @@ package v1
 
 import (
 	"container/list"
+
 	"fmt"
 	"iter"
 	"maps"
@@ -10,6 +11,7 @@ import (
 	"github.com/gofiber/contrib/v3/zap"
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/recover"
+	"github.com/xllm-go/g/env"
 	"github.com/xllm-go/g/logger"
 	"github.com/xllm-go/g/model"
 )
@@ -19,8 +21,12 @@ var (
 	panicFunc func(err interface{})
 )
 
-func SetPanic(f func(interface{})) {
-	panicFunc = f
+func init() {
+	panicFunc = func(w interface{}) {
+		for yield := range env.Panics() {
+			yield(w)
+		}
+	}
 }
 
 func Put(typed string, mod []string, f func(ctx *model.Ctx) error) {
@@ -172,6 +178,7 @@ func completions(ctx fiber.Ctx) (err error) {
 	cctx.Type = "relay"
 	cctx.Put("completion", completion)
 	if c.Support(cctx, completion.Model) {
+		cctx.Put(model.Matchers, model.NewMatchers(cctx))
 		return c.Relay(cctx)
 	}
 

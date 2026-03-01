@@ -5,10 +5,9 @@ import (
 	"time"
 
 	"github.com/bincooo/ja3"
-	"github.com/xllm-go/g/internal"
-	"github.com/xllm-go/g/internal/v1"
-
 	xtls "github.com/refraction-networking/utls"
+	"github.com/xllm-go/g/env"
+	"github.com/xllm-go/g/internal"
 )
 
 var (
@@ -20,7 +19,7 @@ type interfaces struct {
 }
 
 func Sdk() interface {
-	Env() *v1.Environ
+	Env() *env.Environ
 	Transport(proxies string) http.RoundTripper
 	Support(...string) *builder
 	OnInitialized(func())
@@ -56,20 +55,20 @@ func (interfaces) Transport(proxies string) http.RoundTripper {
 	return roundTripper
 }
 
-func (interfaces) Env() *v1.Environ {
-	return v1.Env
+func (interfaces) Env() *env.Environ {
+	return env.Env
 }
 
 func (interfaces) OnInitialized(f func()) {
-	internal.AddInitialized(f)
+	env.AddInitialized(f)
 }
 
 func (interfaces) OnExited(f func()) {
-	internal.AddExited(f)
+	env.AddExited(f)
 }
 
 func (interfaces) OnPanic(f func(interface{})) {
-	internal.AddPanic(f)
+	env.AddPanic(f)
 }
 
 func Execute() {
