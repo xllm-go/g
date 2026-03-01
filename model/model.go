@@ -6,14 +6,14 @@ import (
 	"maps"
 	"reflect"
 
-	"github.com/bincooo/ago/kit"
-	"github.com/bincooo/ago/stream"
+	"github.com/xllm-go/g/kit"
+	"github.com/xllm-go/g/stream"
 )
 
 type Model struct {
 	Id      string `json:"id"`
 	Object  string `json:"object"`
-	Created int    `json:"created"`
+	Created int64  `json:"created"`
 	By      string `json:"owned_by"`
 }
 

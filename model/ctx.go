@@ -7,8 +7,8 @@ import (
 	"io"
 	"strings"
 
-	"github.com/bincooo/ago/logger"
 	"github.com/gofiber/fiber/v3"
+	"github.com/xllm-go/g/logger"
 )
 
 type Ctx struct {

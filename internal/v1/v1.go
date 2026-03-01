@@ -62,7 +62,7 @@ func Models() iter.Seq[model.Model] {
 					Object:  "model",
 					Id:      curr.Value.(string),
 					By:      "chatgpt-adapter:v3.0.1",
-					Created: time.Now().Second(),
+					Created: time.Now().Unix(),
 				})
 			}
 		}
@@ -74,7 +74,7 @@ func Models() iter.Seq[model.Model] {
 					Object:  "model",
 					Id:      curr.Value.(string),
 					By:      "chatgpt-adapter:v3.0.1",
-					Created: time.Now().Second(),
+					Created: time.Now().Unix(),
 				})
 			}
 		}
@@ -86,7 +86,7 @@ func Models() iter.Seq[model.Model] {
 					Object:  "model",
 					Id:      curr.Value.(string),
 					By:      "chatgpt-adapter:v3.0.1",
-					Created: time.Now().Second(),
+					Created: time.Now().Unix(),
 				})
 			}
 		}
@@ -134,6 +134,9 @@ func Initialized(addr string) {
 	app.Post("v1/object/generations", generations)
 	app.Post("proxies/v1/images/generations", generations)
 
+	app.Get("v1/models", models)
+	app.Get("proxies/v1/models", models)
+
 	err := app.Listen(addr)
 	if err != nil {
 		panic(err)
@@ -145,6 +148,17 @@ func index(ctx fiber.Ctx) error {
 	return JustError(
 		ctx.WriteString("<div style='color:green'>success ~</div>"),
 	)
+}
+
+func models(ctx fiber.Ctx) (err error) {
+	data := make([]model.Model, 0)
+	for mod := range Models() {
+		data = append(data, mod)
+	}
+	return ctx.JSON(map[string]interface{}{
+		"object": "list",
+		"data":   data,
+	})
 }
 
 func completions(ctx fiber.Ctx) (err error) {

@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/bincooo/ago/stream"
+	"github.com/xllm-go/g/stream"
 )
 
 type Interface interface {
