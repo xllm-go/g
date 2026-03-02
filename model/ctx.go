@@ -14,6 +14,7 @@ import (
 const (
 	Matchers    = "matchers"
 	ThinkReason = "think_reason"
+	ToolCall    = "tool_call"
 )
 
 type Ctx struct {
@@ -35,6 +36,13 @@ func New(ctx fiber.Ctx) *Ctx {
 
 func (ctx *Ctx) Ctx() fiber.Ctx {
 	return ctx.ctx
+}
+
+func (ctx *Ctx) Cancel() {
+	cancel, ok := ctx.Ctx().Locals("cancel").(func())
+	if ok {
+		cancel()
+	}
 }
 
 func (ctx *Ctx) StreamWriter(yield func(w func(interface{}) error)) {

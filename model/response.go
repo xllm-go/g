@@ -1,6 +1,7 @@
 package model
 
 import (
+	"encoding/json"
 	"fmt"
 	"math/rand"
 	"time"
@@ -10,19 +11,19 @@ type chunkExpr int8
 
 const EOF = "[EOF]"
 
-type funcStruct struct {
-	name      string
-	arguments string
+type FuncCall struct {
+	Name string          `json:"name"`
+	Args json.RawMessage `json:"arguments"`
 }
 
 type ChunkBodies struct {
 	Chunk    string
 	Think    string
-	function *funcStruct
+	Function *FuncCall
 }
 
 func (bodies ChunkBodies) expr() chunkExpr {
-	if bodies.function != nil {
+	if bodies.Function != nil {
 		return 0
 	}
 	return 1
@@ -35,11 +36,11 @@ func CreateChunk(chunk, think string) *ChunkBodies {
 	}
 }
 
-func CreateFunction(name, arguments string) *ChunkBodies {
+func CreateFunction(name string, arguments json.RawMessage) *ChunkBodies {
 	return &ChunkBodies{
-		function: &funcStruct{
-			name:      name,
-			arguments: arguments,
+		Function: &FuncCall{
+			Name: name,
+			Args: arguments,
 		},
 	}
 }
@@ -67,13 +68,13 @@ func CreateStreamResponse(chunkBodies *ChunkBodies, created int64) (response *Re
 				}{"text", "assistant", "", "", []ChoiceToolCall{
 					ChoiceToolCall{
 						"index": 0,
-						"function": Record[string, string]{
-							"name":      chunkBodies.function.name,
-							"arguments": chunkBodies.function.arguments,
+						"Function": Record[string, string]{
+							"name":      chunkBodies.Function.Name,
+							"arguments": string(chunkBodies.Function.Args),
 						},
 					}.
-						Lambda().E(chunkBodies.function.name).Put("id", "call_"+hex(5)).
-						Lambda().E(chunkBodies.function.name).Put("type", "function"),
+						Lambda().E(chunkBodies.Function.Name).Put("id", "call_"+hex(5)).
+						Lambda().E(chunkBodies.Function.Name).Put("type", "Function"),
 				}},
 			},
 		}
@@ -101,14 +102,14 @@ func CreateResponse(chunkBodies *ChunkBodies, created int64) (response *Response
 	stop := "stop"
 
 	var toolCalls []ChoiceToolCall
-	if chunkBodies.function != nil {
+	if chunkBodies.Function != nil {
 		toolCalls = append(toolCalls, ChoiceToolCall{
 			"index": 0,
-			"type":  "function",
+			"type":  "Function",
 			"id":    "call_" + hex(5),
 			"function": Record[string, string]{
-				"name":      chunkBodies.function.name,
-				"arguments": chunkBodies.function.arguments,
+				"name":      chunkBodies.Function.Name,
+				"arguments": string(chunkBodies.Function.Args),
 			},
 		})
 	}

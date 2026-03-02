@@ -90,7 +90,3 @@ func LogLevel(lv string) logger.Level {
 		return logger.InfoLevel
 	}
 }
-
-func getArgs() *CobraArgs {
-	return cArgs
-}

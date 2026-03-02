@@ -126,6 +126,27 @@ func NewMatchers(ctx *Ctx) (slice []Matcher) {
 	if globalMatchers != nil {
 		slice = append(slice, globalMatchers(ctx)...)
 	}
+
+	// TOOL CALL 匹配器
+	over := "</tool_call>"
+	slice = append(slice, &symbolMatcher{
+		Find: "<tool_call>",
+		H: func(index int, content string) (state int, cache, result string) {
+			if !strings.Contains(content, over) {
+				return MatMatching, "", content
+			}
+			idx := strings.LastIndex(content, over)
+			cache = content[idx+len(over):]
+			content = content[:idx+len(over)]
+
+			logger.Sugar().Infof("execute matcher[<tool_call>] content:\n%s", content)
+
+			// 处理标签
+			content = strings.TrimSpace(content)
+			ctx.Put(ToolCall, content[11:len(content)-12])
+			return MatMatched, cache, ""
+		},
+	})
 	return
 }
 
@@ -139,7 +160,8 @@ func NewMatcher(find string, h func(index int, content string) (state int, cache
 // MAT_DEFAULT	没有命中，继续执行下一个。
 // MAT_MATCHING 匹配中，缓存消息不执行下一个。
 // MAT_MATCHED 	命中，不再执行下一个。
-func ExecMatchers(matchers []Matcher, raw string, done bool) string {
+func ExecMatchers(ctx *Ctx, raw string, done bool) string {
+	matchers := JustValue[string, []Matcher](ctx.Record, Matchers)
 	s := MatDefault
 	for _, mat := range matchers {
 		s, raw = mat.Match(raw, done)

@@ -122,9 +122,9 @@ func Initialized(addr string) {
 
 	app.Use(func(ctx fiber.Ctx) error {
 		logger.Sugar().Infof("-------------------- NEW START --------------------")
-		abort, _ := newAbort(ctx)
+		abort, cancel := newAbort(ctx)
+		ctx.Locals("cancel", cancel)
 		ctx.SetContext(abort)
-		//defer cancel()
 		return ctx.Next()
 	})
 
