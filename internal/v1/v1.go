@@ -2,7 +2,6 @@ package v1
 
 import (
 	"container/list"
-
 	"fmt"
 	"iter"
 	"maps"

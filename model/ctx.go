@@ -2,9 +2,11 @@ package model
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
+	"reflect"
 	"strings"
 
 	"github.com/gofiber/fiber/v3"
@@ -39,7 +41,14 @@ func (ctx *Ctx) Ctx() fiber.Ctx {
 }
 
 func (ctx *Ctx) Cancel() {
-	cancel, ok := ctx.Ctx().Locals("cancel").(func())
+	// goroutine 可能回收了
+	v := reflect.ValueOf(ctx.ctx).Elem()
+	f := v.FieldByName("fasthttp")
+	if f.IsNil() {
+		return
+	}
+
+	cancel, ok := ctx.Ctx().Locals("cancel").(context.CancelFunc)
 	if ok {
 		cancel()
 	}
