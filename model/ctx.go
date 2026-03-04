@@ -82,7 +82,6 @@ func token(ctx fiber.Ctx) (token string) {
 }
 
 func write(w *bufio.Writer, bodies *ChunkBodies, unix int64) error {
-	event := "data"
 	var data string
 
 	switch bodies.expr() {
@@ -90,9 +89,11 @@ func write(w *bufio.Writer, bodies *ChunkBodies, unix int64) error {
 		if bodies.Err == io.EOF {
 			data = "[DONE]"
 		} else {
-			event = "error"
-			resp := CreateResponse(bodies, unix)
-			chunk, _ := json.Marshal(resp)
+			chunk, _ := json.Marshal(map[string]interface{}{
+				"error": map[string]string{
+					"message": bodies.Err.Error(),
+				},
+			})
 			data = string(chunk)
 		}
 
@@ -100,14 +101,14 @@ func write(w *bufio.Writer, bodies *ChunkBodies, unix int64) error {
 		data = CreateResponse(bodies, unix).String()
 	}
 
-	err := sse(w, event, data)
+	err := sse(w, data)
 	if err != nil {
 		return err
 	}
 
 	if bodies.expr() == 0 {
 		data = createStopResponse("tool_calls", unix).String()
-		err = sse(w, event, data)
+		err = sse(w, data)
 		if err != nil {
 			return err
 		}
@@ -116,8 +117,8 @@ func write(w *bufio.Writer, bodies *ChunkBodies, unix int64) error {
 	return flush(w)
 }
 
-func sse(w *bufio.Writer, event, data string) (err error) {
-	_, err = fmt.Fprintf(w, "%s: %s\n\n", event, data)
+func sse(w *bufio.Writer, data string) (err error) {
+	_, err = fmt.Fprintf(w, "data: %s\n\n", data)
 	if err != nil {
 		logger.Sugar().Errorf("write sse data error: %v", err)
 	}
