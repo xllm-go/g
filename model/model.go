@@ -64,6 +64,11 @@ type Response struct {
 	Usage ResponseUsage `json:"usage,omitempty"`
 }
 
+func (resp Response) String() string {
+	chunk, _ := json.Marshal(resp)
+	return string(chunk)
+}
+
 type ResponseUsage Record[string, any]
 
 type Choice struct {

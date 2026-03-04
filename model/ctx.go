@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"reflect"
 	"strings"
 
 	"github.com/gofiber/fiber/v3"
@@ -40,31 +39,31 @@ func (ctx *Ctx) Ctx() fiber.Ctx {
 	return ctx.ctx
 }
 
-func (ctx *Ctx) Cancel() {
-	// goroutine 可能回收了
-	v := reflect.ValueOf(ctx.ctx).Elem()
-	f := v.FieldByName("fasthttp")
-	if f.IsNil() {
-		return
+func (ctx *Ctx) Context() context.Context {
+	cctx, ok := ctx.Get("context").(context.Context)
+	if ok {
+		return cctx
 	}
+	return context.Background()
+}
 
-	cancel, ok := ctx.Ctx().Locals("cancel").(context.CancelFunc)
+func (ctx *Ctx) Cancel() {
+	cancel, ok := ctx.Get("cancel").(context.CancelFunc)
 	if ok {
 		cancel()
 	}
 }
 
-func (ctx *Ctx) StreamWriter(yield func(w func(interface{}) error)) {
+func (ctx *Ctx) StreamWriter(yield func(w func(*ChunkBodies) error), unix int64) {
 	ctx.ctx.Set("content-type", "text/event-stream")
 	ctx.ctx.Set("cache-control", "no-cache")
 	ctx.ctx.Set("x-accel-buffering", "no")
 	ctx.ctx.Set("x-accept-encoding", "gzip, deflate, br")
 	ctx.ctx.Set("connection", "keep-alive")
 	ctx.ctx.Set("transfer-encoding", "chunked")
-
 	_ = ctx.ctx.SendStreamWriter(func(w *bufio.Writer) {
-		yield(func(msg interface{}) error {
-			return write(w, msg)
+		yield(func(bodies *ChunkBodies) error {
+			return write(w, bodies, unix)
 		})
 	})
 	return
@@ -82,40 +81,47 @@ func token(ctx fiber.Ctx) (token string) {
 	return
 }
 
-func write(w *bufio.Writer, msg interface{}) error {
+func write(w *bufio.Writer, bodies *ChunkBodies, unix int64) error {
 	event := "data"
 	var data string
 
-	switch v := msg.(type) {
-	case interface{ String() string }:
-		data = v.String()
-	case []byte:
-		data = string(v)
-	case string:
-		data = v
-	case error:
-		if v == io.EOF {
+	switch bodies.expr() {
+	case -1:
+		if bodies.Err == io.EOF {
 			data = "[DONE]"
 		} else {
 			event = "error"
-			data = v.Error()
-		}
-	default:
-		chunk, err := json.Marshal(v)
-		if err != nil {
-			event = "error"
-			data = err.Error()
-		} else {
+			resp := CreateResponse(bodies, unix)
+			chunk, _ := json.Marshal(resp)
 			data = string(chunk)
+		}
+
+	default:
+		data = CreateResponse(bodies, unix).String()
+	}
+
+	err := sse(w, event, data)
+	if err != nil {
+		return err
+	}
+
+	if bodies.expr() == 0 {
+		data = createStopResponse("tool_calls", unix).String()
+		err = sse(w, event, data)
+		if err != nil {
+			return err
 		}
 	}
 
-	_, err := fmt.Fprintf(w, "%s: %s\n\n", event, data)
+	return flush(w)
+}
+
+func sse(w *bufio.Writer, event, data string) (err error) {
+	_, err = fmt.Fprintf(w, "%s: %s\n\n", event, data)
 	if err != nil {
 		logger.Sugar().Errorf("write sse data error: %v", err)
-		return err
 	}
-	return flush(w)
+	return
 }
 
 func flush(w *bufio.Writer) error {

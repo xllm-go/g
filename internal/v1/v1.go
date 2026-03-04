@@ -121,9 +121,6 @@ func Initialized(addr string) {
 
 	app.Use(func(ctx fiber.Ctx) error {
 		logger.Sugar().Infof("-------------------- NEW START --------------------")
-		abort, cancel := newAbort(ctx)
-		ctx.Locals("cancel", cancel)
-		ctx.SetContext(abort)
 		return ctx.Next()
 	})
 
@@ -176,6 +173,10 @@ func completions(ctx fiber.Ctx) (err error) {
 	cctx := model.New(ctx)
 	cctx.Type = "relay"
 	cctx.Put("completion", completion)
+	abort, cancel := newAbort(ctx)
+	cctx.Put("cancel", cancel)
+	cctx.Put("context", abort)
+
 	if c.Support(cctx, completion.Model) {
 		cctx.Put(model.Matchers, model.NewMatchers(cctx))
 		return c.Relay(cctx)

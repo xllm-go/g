@@ -20,40 +20,118 @@ type ChunkBodies struct {
 	Chunk    string
 	Think    string
 	Function *FuncCall
+
+	Err error
+
+	Stream bool
 }
 
 func (bodies ChunkBodies) expr() chunkExpr {
+	if bodies.Err != nil {
+		return -1
+	}
 	if bodies.Function != nil {
 		return 0
 	}
 	return 1
 }
 
-func CreateChunk(chunk, think string) *ChunkBodies {
+func CreateFunction(chunk string, stream bool) *ChunkBodies {
+	var fun FuncCall
+	_ = json.Unmarshal([]byte(chunk), &fun)
 	return &ChunkBodies{
-		Chunk: chunk,
-		Think: think,
+		Stream:   stream,
+		Function: &fun,
 	}
 }
 
-func CreateFunction(name string, arguments json.RawMessage) *ChunkBodies {
-	return &ChunkBodies{
-		Function: &FuncCall{
-			Name: name,
-			Args: arguments,
+func CreateResponse(chunkBodies *ChunkBodies, unix int64) *Response {
+	if chunkBodies.Stream {
+		return createStreamResponse(chunkBodies, unix)
+	}
+
+	stop := "stop"
+	var toolCalls []ChoiceToolCall
+	if chunkBodies.Function != nil {
+		toolCalls = append(toolCalls, ChoiceToolCall{
+			"index": 0,
+			"type":  "Function",
+			"id":    "call_" + hex(5),
+			"function": Record[string, string]{
+				"name":      chunkBodies.Function.Name,
+				"arguments": string(chunkBodies.Function.Args),
+			},
+		})
+	}
+
+	if chunkBodies.Err != nil {
+		return &Response{
+			Model:   "LLM",
+			Created: unix,
+			Id:      fmt.Sprintf("chatcmpl-%d", unix),
+			Object:  "chat.completion",
+			Choices: []Choice{
+				{
+					Index: 0,
+					Message: &struct {
+						Role             string `json:"role,omitempty"`
+						Content          string `json:"content,omitempty"`
+						ReasoningContent string `json:"reasoning_content,omitempty"`
+
+						ToolCalls []ChoiceToolCall `json:"tool_calls,omitempty"`
+					}{"assistant", fmt.Sprintf("error: %v", chunkBodies.Err), "", nil},
+					FinishReason: &stop,
+				},
+			},
+			//Usage: usage,
+		}
+	}
+
+	return &Response{
+		Model:   "LLM",
+		Created: unix,
+		Id:      fmt.Sprintf("chatcmpl-%d", unix),
+		Object:  "chat.completion",
+		Choices: []Choice{
+			{
+				Index: 0,
+				Message: &struct {
+					Role             string `json:"role,omitempty"`
+					Content          string `json:"content,omitempty"`
+					ReasoningContent string `json:"reasoning_content,omitempty"`
+
+					ToolCalls []ChoiceToolCall `json:"tool_calls,omitempty"`
+				}{"assistant", chunkBodies.Chunk, chunkBodies.Think, toolCalls},
+				FinishReason: &stop,
+			},
 		},
+		//Usage: usage,
 	}
 }
 
-func CreateStreamResponse(chunkBodies *ChunkBodies, created int64) (response *Response) {
+func createStreamResponse(chunkBodies *ChunkBodies, unix int64) (response *Response) {
 	response = &Response{
 		Model:   "LLM",
-		Created: created,
-		Id:      fmt.Sprintf("chatcmpl-%d", created),
+		Created: unix,
+		Id:      fmt.Sprintf("chatcmpl-%d", unix),
 		Object:  "chat.completion.chunk",
 	}
 
 	switch chunkBodies.expr() {
+	case -1:
+		response.Choices = []Choice{
+			{
+				Index: 0,
+				Delta: &struct {
+					Type             string `json:"type,omitempty"`
+					Role             string `json:"role,omitempty"`
+					Content          string `json:"content,omitempty"`
+					ReasoningContent string `json:"reasoning_content,omitempty"`
+
+					ToolCalls []ChoiceToolCall `json:"tool_calls,omitempty"`
+				}{"text", "assistant", fmt.Sprintf("error: %v", chunkBodies.Err), "", nil},
+			},
+		}
 	case 0:
 		response.Choices = []Choice{
 			{
@@ -65,16 +143,16 @@ func CreateStreamResponse(chunkBodies *ChunkBodies, created int64) (response *Re
 					ReasoningContent string `json:"reasoning_content,omitempty"`
 
 					ToolCalls []ChoiceToolCall `json:"tool_calls,omitempty"`
-				}{"text", "assistant", "", "", []ChoiceToolCall{
+				}{Role: "assistant", ToolCalls: []ChoiceToolCall{
 					ChoiceToolCall{
 						"index": 0,
-						"Function": Record[string, string]{
+						"function": Record[string, string]{
 							"name":      chunkBodies.Function.Name,
 							"arguments": string(chunkBodies.Function.Args),
 						},
 					}.
 						Lambda().E(chunkBodies.Function.Name).Put("id", "call_"+hex(5)).
-						Lambda().E(chunkBodies.Function.Name).Put("type", "Function"),
+						Lambda().E(chunkBodies.Function.Name).Put("type", "function"),
 				}},
 			},
 		}
@@ -98,62 +176,27 @@ func CreateStreamResponse(chunkBodies *ChunkBodies, created int64) (response *Re
 	return
 }
 
-func CreateResponse(chunkBodies *ChunkBodies, created int64) (response *Response) {
-	stop := "stop"
-
-	var toolCalls []ChoiceToolCall
-	if chunkBodies.Function != nil {
-		toolCalls = append(toolCalls, ChoiceToolCall{
-			"index": 0,
-			"type":  "Function",
-			"id":    "call_" + hex(5),
-			"function": Record[string, string]{
-				"name":      chunkBodies.Function.Name,
-				"arguments": string(chunkBodies.Function.Args),
-			},
-		})
-	}
-
-	response = &Response{
+func createStopResponse(stop string, unix int64) (response *Response) {
+	return &Response{
 		Model:   "LLM",
-		Created: created,
-		Id:      fmt.Sprintf("chatcmpl-%d", created),
+		Created: unix,
+		Id:      fmt.Sprintf("chatcmpl-%d", unix),
 		Object:  "chat.completion",
 		Choices: []Choice{
 			{
 				Index: 0,
-				Message: &struct {
+				Delta: &struct {
+					Type             string `json:"type,omitempty"`
 					Role             string `json:"role,omitempty"`
 					Content          string `json:"content,omitempty"`
 					ReasoningContent string `json:"reasoning_content,omitempty"`
 
 					ToolCalls []ChoiceToolCall `json:"tool_calls,omitempty"`
-				}{"assistant", chunkBodies.Chunk, chunkBodies.Think, toolCalls},
+				}{},
 				FinishReason: &stop,
 			},
 		},
 		//Usage: usage,
-	}
-
-	return
-}
-
-func SplitEach(content string, w func(chunk string)) {
-	pos := 0
-	runeStr := []rune(content)
-	step := 30
-
-	for {
-		contentL := len(runeStr[pos:])
-		if contentL > step {
-			w(string(runeStr[pos : pos+step]))
-			pos += step
-			continue
-		}
-
-		w(string(runeStr[pos:]))
-		time.Sleep(100 * time.Millisecond)
-		break
 	}
 }
 

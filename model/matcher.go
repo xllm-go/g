@@ -147,6 +147,17 @@ func NewMatchers(ctx *Ctx) (slice []Matcher) {
 			return MatMatched, cache, ""
 		},
 	})
+
+	// "<|im_end|>"
+	slice = append(slice, &symbolMatcher{
+		Find: "<|im_end|>",
+		H: func(index int, content string) (state int, cache, result string) {
+			state = MatMatched
+			ctx.Clone()
+			return
+		},
+	})
+
 	return
 }
 
