@@ -2,6 +2,7 @@ package v1
 
 import (
 	"container/list"
+	"crypto/tls"
 	"fmt"
 	"iter"
 	"maps"
@@ -140,7 +141,12 @@ func Initialized(addr string) {
 	app.Get("v1/models", models)
 	app.Get("proxies/v1/models", models)
 
-	err := app.Listen(addr)
+	err := app.Listen(addr, fiber.ListenConfig{
+		TLSMinVersion:      tls.VersionTLS12,
+		ListenerNetwork:    fiber.NetworkTCP,
+		ShutdownTimeout:    10 * time.Second,
+		UnixSocketFileMode: 0o770,
+	})
 	if err != nil {
 		panic(err)
 	}

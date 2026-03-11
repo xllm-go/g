@@ -39,6 +39,10 @@ func (ctx *Ctx) Ctx() fiber.Ctx {
 	return ctx.ctx
 }
 
+func (ctx *Ctx) GetCompletion() *Completion {
+	return JustValue[string, *Completion](ctx.Record, "completion")
+}
+
 func (ctx *Ctx) Context() context.Context {
 	cctx, ok := ctx.Get("context").(context.Context)
 	if ok {
@@ -54,7 +58,34 @@ func (ctx *Ctx) Cancel() {
 	}
 }
 
-func (ctx *Ctx) StreamWriter(yield func(w func(*ChunkBodies) error), unix int64) {
+func (ctx *Ctx) StreamWriter(accept chan *ChunkBodies, unix int64) {
+	ctx.ctx.Set("content-type", "text/event-stream")
+	ctx.ctx.Set("cache-control", "no-cache")
+	ctx.ctx.Set("x-accel-buffering", "no")
+	ctx.ctx.Set("x-accept-encoding", "gzip, deflate, br")
+	ctx.ctx.Set("connection", "keep-alive")
+	ctx.ctx.Set("transfer-encoding", "chunked")
+	_ = ctx.ctx.SendStreamWriter(func(w *bufio.Writer) {
+		for {
+			bodies, ok := <-accept
+			if !ok {
+				err := write(w, &ChunkBodies{Err: io.EOF}, unix)
+				if err != nil {
+					logger.Sugar().Error(err)
+				}
+				break
+			}
+
+			if err := write(w, bodies, unix); err != nil {
+				logger.Sugar().Error(err)
+				break
+			}
+		}
+	})
+
+}
+
+func (ctx *Ctx) streamWriter(yield func(w func(*ChunkBodies) error), unix int64) {
 	ctx.ctx.Set("content-type", "text/event-stream")
 	ctx.ctx.Set("cache-control", "no-cache")
 	ctx.ctx.Set("x-accel-buffering", "no")

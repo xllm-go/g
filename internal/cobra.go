@@ -52,7 +52,7 @@ var (
 				return
 			}
 
-			v1.Initialized(fmt.Sprintf(":%d", cArgs.Port))
+			v1.Initialized(fmt.Sprintf("[::]:%d", cArgs.Port))
 		},
 	}
 )

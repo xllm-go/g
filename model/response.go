@@ -9,8 +9,6 @@ import (
 
 type chunkExpr int8
 
-const EOF = "[EOF]"
-
 type FuncCall struct {
 	Name string          `json:"name"`
 	Args json.RawMessage `json:"arguments"`
