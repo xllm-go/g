@@ -26,7 +26,7 @@ var (
 
 func InitLogger(path string, logLevel Level) {
 	if len(path) == 0 {
-		path = "logger"
+		path = "log"
 	}
 	writeSyncer := getWriter(filepath.Join(path, "/adapter.log"), 1, 3, 28)
 
