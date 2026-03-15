@@ -12,18 +12,17 @@ import (
 	"github.com/xllm-go/g/logger"
 )
 
-const (
-	Matchers    = "matchers"
-	ThinkReason = "think_reason"
-	ToolCall    = "tool_call"
-)
-
 type Ctx struct {
 	ctx fiber.Ctx
 	Record[string, any]
 
 	Token string
 	Type  string
+}
+
+// 匹配器接口
+type Interceptor interface {
+	scan(content string, over bool) (state int, result string)
 }
 
 func New(ctx fiber.Ctx) *Ctx {
@@ -39,10 +38,6 @@ func (ctx *Ctx) Ctx() fiber.Ctx {
 	return ctx.ctx
 }
 
-func (ctx *Ctx) GetCompletion() *Completion {
-	return JustValue[string, *Completion](ctx.Record, "completion")
-}
-
 func (ctx *Ctx) Context() context.Context {
 	cctx, ok := ctx.Get("context").(context.Context)
 	if ok {
@@ -56,6 +51,10 @@ func (ctx *Ctx) Cancel() {
 	if ok {
 		cancel()
 	}
+}
+
+func (ctx *Ctx) GetCompletion() *Completion {
+	return JustValue[string, *Completion](ctx.Record, "completion")
 }
 
 func (ctx *Ctx) StreamWriter(accept chan *ChunkBodies, unix int64) {

@@ -12,12 +12,13 @@ import (
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/recover"
 	"github.com/xllm-go/g/env"
+	"github.com/xllm-go/g/interceptor"
 	"github.com/xllm-go/g/logger"
 	"github.com/xllm-go/g/model"
 )
 
 var (
-	c         = &container{}
+	con       = &container{}
 	panicFunc func(err interface{})
 )
 
@@ -41,27 +42,22 @@ func Put(typed string, mod []string, f func(ctx *model.Ctx) error) {
 
 	switch typed {
 	case "relay":
-		if c.relayMap == nil {
-			c.relayMap = make(map[*list.List]func(ctx *model.Ctx) error)
+		if con.rm == nil {
+			con.rm = make(map[*list.List]func(ctx *model.Ctx) error)
 		}
-		c.relayMap[ctr] = f
-	case "embed":
-		if c.embedMap == nil {
-			c.embedMap = make(map[*list.List]func(ctx *model.Ctx) error)
-		}
-		c.embedMap[ctr] = f
+		con.rm[ctr] = f
 	case "image":
-		if c.imageMap == nil {
-			c.imageMap = make(map[*list.List]func(ctx *model.Ctx) error)
+		if con.im == nil {
+			con.im = make(map[*list.List]func(ctx *model.Ctx) error)
 		}
-		c.imageMap[ctr] = f
+		con.im[ctr] = f
 	}
 }
 
 // 模型迭代器
 func Models() iter.Seq[model.Model] {
 	return func(yield func(model.Model) bool) {
-		keys := maps.Keys(c.relayMap)
+		keys := maps.Keys(con.rm)
 		for ctr := range keys {
 			for curr := ctr.Front(); curr != nil; curr = curr.Next() {
 				yield(model.Model{
@@ -73,19 +69,7 @@ func Models() iter.Seq[model.Model] {
 			}
 		}
 
-		keys = maps.Keys(c.embedMap)
-		for ctr := range keys {
-			for curr := ctr.Front(); curr != nil; curr = curr.Next() {
-				yield(model.Model{
-					Object:  "model",
-					Id:      curr.Value.(string),
-					By:      "chatgpt-adapter:v3.0.1",
-					Created: time.Now().Unix(),
-				})
-			}
-		}
-
-		keys = maps.Keys(c.imageMap)
+		keys = maps.Keys(con.im)
 		for ctr := range keys {
 			for curr := ctr.Front(); curr != nil; curr = curr.Next() {
 				yield(model.Model{
@@ -130,9 +114,6 @@ func Initialized(addr string) {
 	app.Post("v1/chat/completions", completions)
 	app.Post("v1/object/completions", completions)
 	app.Post("proxies/v1/chat/completions", completions)
-
-	app.Post("/v1/embeddings", embeddings)
-	app.Post("proxies/v1/embeddings", embeddings)
 
 	app.Post("v1/images/generations", generations)
 	app.Post("v1/object/generations", generations)
@@ -183,28 +164,12 @@ func completions(ctx fiber.Ctx) (err error) {
 	cctx.Put("cancel", cancel)
 	cctx.Put("context", abort)
 
-	if c.Support(cctx, completion.Model) {
-		cctx.Put(model.Matchers, model.NewMatchers(cctx))
-		return c.Relay(cctx)
+	if con.Support(cctx, completion.Model) {
+		cctx.Put(interceptor.Matcher, interceptor.NewInterceptors(cctx))
+		return con.Relay(cctx)
 	}
 
 	return writeError(ctx, fmt.Sprintf("model [%s] is not found", completion.Model))
-}
-
-func embeddings(ctx fiber.Ctx) (err error) {
-	embedding := new(model.Embedding)
-	if err = ctx.Bind().JSON(embedding); err != nil {
-		return
-	}
-
-	cctx := model.New(ctx)
-	cctx.Type = "embed"
-	cctx.Put("embedding", embedding)
-	if c.Support(cctx, embedding.Model) {
-		return c.Relay(cctx)
-	}
-
-	return writeError(ctx, fmt.Sprintf("model [%s] is not found", embedding.Model))
 }
 
 func generations(ctx fiber.Ctx) (err error) {
@@ -216,8 +181,8 @@ func generations(ctx fiber.Ctx) (err error) {
 	cctx := model.New(ctx)
 	cctx.Type = "image"
 	cctx.Put("generation", generation)
-	if c.Support(cctx, generation.Model) {
-		return c.Relay(cctx)
+	if con.Support(cctx, generation.Model) {
+		return con.Relay(cctx)
 	}
 
 	return writeError(ctx, fmt.Sprintf("model [%s] is not found", generation.Model))

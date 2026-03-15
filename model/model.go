@@ -99,8 +99,8 @@ func (rec Record[Key, Value]) Put(k Key, v Value) {
 	rec[k] = v
 }
 
-func (rec Record[Key, Value]) Lambda() *LambdaBuilder[Key, Value] {
-	return &LambdaBuilder[Key, Value]{rec}
+func (rec Record[Key, Value]) Lambda() *lambdaBuilder[Key, Value] {
+	return &lambdaBuilder[Key, Value]{rec}
 }
 
 // 获取值

@@ -9,31 +9,24 @@ import (
 )
 
 type container struct {
-	relayMap map[*list.List]func(ctx *model.Ctx) error
-	embedMap map[*list.List]func(ctx *model.Ctx) error
-	imageMap map[*list.List]func(ctx *model.Ctx) error
+	rm map[*list.List]func(ctx *model.Ctx) error
+	im map[*list.List]func(ctx *model.Ctx) error
 }
 
 func (_this *container) Support(ctx *model.Ctx, mod string) bool {
 	var currMap map[*list.List]func(ctx *model.Ctx) error
 	switch ctx.Type {
 	case "relay":
-		if _this.relayMap == nil {
+		if _this.rm == nil {
 			return false
 		}
-		currMap = _this.relayMap
-
-	case "embed":
-		if _this.embedMap == nil {
-			return false
-		}
-		currMap = _this.embedMap
+		currMap = _this.rm
 
 	case "image":
-		if _this.imageMap == nil {
+		if _this.im == nil {
 			return false
 		}
-		currMap = _this.imageMap
+		currMap = _this.im
 
 	default:
 		return false
