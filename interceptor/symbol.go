@@ -61,6 +61,12 @@ func (interceptor *symbolInterceptor) nextToken(content string) (index, state in
 
 		// 索引的字符不一致，重置累加
 		char = find[pos]
+		//logger.Sugar().Infof("[interceptor] char:[%v]%s, %v-%d, %s",
+		//	interceptor.Find,
+		//	string(find[pos]),
+		//	char == chunk[index],
+		//	index, string(chunk[index]),
+		//)
 		if char != chunk[index] {
 			pos = 0
 			state = Default
