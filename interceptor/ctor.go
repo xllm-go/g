@@ -41,7 +41,7 @@ type mapper struct {
 func init() {
 	env.AddInitialized(func() {
 		var objs []mapper
-		err := env.Env.UnmarshalKey("matcher", &objs)
+		err := env.Env.UnmarshalKey("interceptor", &objs)
 		if err != nil {
 			logger.Sugar().Fatal(err)
 		}
