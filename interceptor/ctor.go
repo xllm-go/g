@@ -24,6 +24,8 @@ var (
 	interceptorConstructor func(ctx *model.Ctx) []Interceptor
 )
 
+type ChainInterceptor func(chunk string, over bool) string
+
 // 匹配器接口
 type Interceptor interface {
 	scan(content string, over bool) (state int, result string)
@@ -162,14 +164,29 @@ func AppendInterceptor(ctx *model.Ctx, in ...Interceptor) {
 	ctx.Put(Matcher, interceptors)
 }
 
-func ExecuteInterceptors(ctx *model.Ctx, chunk string, over bool) string {
+func ExecuteInterceptors(ctx *model.Ctx, channel chan *model.ChunkBodies) ChainInterceptor {
 	matchers := model.JustValue[string, []Interceptor](ctx.Record, Matcher)
-	state := Default
-	for _, mat := range matchers {
-		state, chunk = mat.scan(chunk, over)
-		if state != Default {
-			break
+	completion := ctx.GetCompletion()
+
+	return func(chunk string, over bool) string {
+		state := Default
+		for _, mat := range matchers {
+			state, chunk = mat.scan(chunk, over)
+			if state != Default {
+				break
+			}
 		}
+
+		if block, ok := model.GetValue[string, string](ctx.Record, ToolCall); ok {
+			channel <- model.CreateFunction(block, completion.Stream)
+			ctx.Cancel()
+		}
+
+		if think, ok := model.GetValue[string, string](ctx.Record, ThinkReason); ok {
+			ctx.Record.Del(ThinkReason)
+			channel <- &model.ChunkBodies{Think: think, Stream: true}
+		}
+
+		return chunk
 	}
-	return chunk
 }
