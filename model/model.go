@@ -43,14 +43,6 @@ type Generation struct {
 	Quality string `json:"quality"`
 }
 
-type Embedding struct {
-	Input          interface{} `json:"input"`
-	Model          string      `json:"model"`
-	EncodingFormat string      `json:"encoding_format,omitempty"`
-	Dimensions     int         `json:"dimensions,omitempty"`
-	User           string      `json:"user,omitempty"`
-}
-
 type Response struct {
 	Id      string   `json:"id"`
 	Object  string   `json:"object"`

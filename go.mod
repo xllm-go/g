@@ -4,14 +4,12 @@ go 1.25.0
 
 require (
 	github.com/bincooo/ago v0.0.0-20260209031442-3333e4ce454e
-	github.com/bincooo/ja3 v0.0.0-20250809061016-e32ddf230191
 	github.com/dlclark/regexp2 v1.11.5
 	github.com/elazarl/goproxy v1.8.1
 	github.com/go-vgo/robotgo v1.0.0
 	github.com/gofiber/contrib/v3/zap v1.0.0
 	github.com/gofiber/fiber/v3 v3.1.0
 	github.com/nikolalohinski/gonja/v2 v2.5.2
-	github.com/refraction-networking/utls v1.8.2
 	github.com/robotn/gohook v0.42.3
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/viper v1.21.0

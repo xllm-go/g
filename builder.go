@@ -22,12 +22,6 @@ func (receiver *builder) Relay(yield func(ctx *model.Ctx) error) {
 	receiver.build("relay")
 }
 
-// 向量查询
-func (receiver *builder) Embed(yield func(ctx *model.Ctx) error) {
-	receiver.yield = yield
-	receiver.build("embed")
-}
-
 // 文生图
 func (receiver *builder) Image(yield func(ctx *model.Ctx) error) {
 	receiver.yield = yield
