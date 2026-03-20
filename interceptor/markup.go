@@ -19,11 +19,11 @@ func (interceptor *markupInterceptor) scan(content string, over bool) (state int
 		H := interceptor.H
 		if H != nil {
 			H = func(index int, content string) (state int, result string) {
-				if !strings.Contains(content, interceptor.Over) {
+				idx := strings.LastIndex(content, interceptor.Over)
+				if idx < 0 {
 					return Matching, content
 				}
 
-				idx := strings.LastIndex(content, interceptor.Over)
 				splitter := idx + len(interceptor.Over)
 				interceptor.strategy.cache = content[splitter:]
 				content = content[:splitter]

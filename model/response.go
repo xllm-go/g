@@ -44,7 +44,10 @@ func CreateFunction(chunk string, stream bool) *ChunkBodies {
 }
 
 func WaitChannelResponse(channel chan *ChunkBodies, unix int64) *Response {
-	return CreateResponse(waitChannel(channel), unix)
+	return CreateResponse(
+		waitChannel(channel),
+		unix,
+	)
 }
 
 func waitChannel(channel chan *ChunkBodies) *ChunkBodies {
@@ -56,7 +59,7 @@ func waitChannel(channel chan *ChunkBodies) *ChunkBodies {
 		}
 		chunk += bodies.Chunk
 		if bodies.Think != "" {
-			think = bodies.Think
+			think += bodies.Think
 		}
 		if bodies.Function != nil {
 			bodies.Stream = false

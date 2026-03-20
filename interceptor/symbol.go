@@ -36,7 +36,11 @@ label:
 	}
 
 	// 执行上游拦截处理
-	return interceptor.execute(content, over, index)
+	state, result = interceptor.execute(content, over, index)
+	if state == Matched {
+		interceptor.cache = ""
+	}
+	return
 }
 
 func (interceptor *symbolInterceptor) nextToken(content string) (index, state int) {

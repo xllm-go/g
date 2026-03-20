@@ -2,6 +2,7 @@ package interceptor
 
 import (
 	"strings"
+	"sync"
 	"testing"
 
 	regexp "github.com/dlclark/regexp2"
@@ -15,8 +16,10 @@ func TestThinkReason(t *testing.T) {
 	)
 
 	chunk := []string{
-		"<think>\n",
-		"用户只是在打招呼，不需要调用任何工具，直接回复即可。\n",
+		"\n\n<think>\n",
+		"用户只是在打招呼",
+		"，不需要调用任何工具，直",
+		"接回复即可。\n",
 		"</think>\n\n",
 		"你好呀！😊",
 		"很高兴见到你！有什么我可以帮你的吗？无论是查天气、搜索信息，还是聊聊天，我都随时为你服务～",
@@ -53,11 +56,29 @@ func TestThinkReason(t *testing.T) {
 		return Matched, result
 	}
 
-	matchers := []Interceptor{
-		&markupInterceptor{
+	think := 7
+	var once sync.Once
+	interceptors := []Interceptor{
+		&symbolInterceptor{
 			Find: "<think>",
-			Over: "</think>",
-			H:    H,
+			H: func(_ int, content string) (int, string) {
+				once.Do(func() {
+					if idx := strings.Index(content, "<think>"); idx > 0 {
+						think += idx
+					}
+				})
+
+				defer func() { think = len(content) }()
+				idx := strings.Index(content, "</think>")
+				if idx < 0 {
+					t.Logf("ctx.Put(ThinkReason, content): %s", content[think:])
+					return Matching, content
+				}
+
+				splitter := idx + len("</think>")
+				t.Logf("ctx.Put(ThinkReason, content[:idx]): %s", content[think:idx])
+				return Matched, content[splitter:]
+			},
 		},
 		&markupInterceptor{
 			Find: "I do not engage",
@@ -83,10 +104,10 @@ func TestThinkReason(t *testing.T) {
 	}
 
 	for _, block := range chunk {
-		result := executeInterceptors(matchers, block, false)
+		result := executeInterceptors(interceptors, block, false)
 		t.Log(result)
 	}
-	result := executeInterceptors(matchers, "", true)
+	result := executeInterceptors(interceptors, "", true)
 	t.Log(result)
 }
 

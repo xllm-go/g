@@ -2,6 +2,7 @@ package interceptor
 
 import (
 	"strings"
+	"sync"
 
 	"github.com/xllm-go/g/env"
 	"github.com/xllm-go/g/logger"
@@ -123,9 +124,33 @@ func initInterceptor(objs []mapper) {
 
 func NewInterceptors(ctx *model.Ctx) (slice []Interceptor) {
 	slice = make([]Interceptor, 0)
-	if interceptorConstructor != nil {
-		slice = append(slice, interceptorConstructor(ctx)...)
-	}
+
+	// THINK
+	slice = append(slice, func() Interceptor {
+		think := 7
+		var once sync.Once
+		return &symbolInterceptor{
+			Find: "<think>",
+			H: func(_ int, content string) (int, string) {
+				once.Do(func() {
+					if idx := strings.Index(content, "<think>"); idx > 0 {
+						think += idx
+					}
+				})
+
+				defer func() { think = len(content) }()
+				idx := strings.LastIndex(content, "</think>")
+				if idx < 0 {
+					ctx.Put(ThinkReason, content[think:])
+					return Matching, content
+				}
+
+				logger.Sugar().Infof("execute matcher[<think>] content:\n%s", content[7:idx])
+				ctx.Put(ThinkReason, content[think:idx])
+				return Matched, content[idx+8:]
+			},
+		}
+	}())
 
 	// TOOL CALL 匹配器
 	slice = append(slice, &markupInterceptor{
@@ -147,6 +172,10 @@ func NewInterceptors(ctx *model.Ctx) (slice []Interceptor) {
 			return
 		},
 	})
+
+	if interceptorConstructor != nil {
+		slice = append(slice, interceptorConstructor(ctx)...)
+	}
 
 	return
 }
@@ -172,7 +201,7 @@ func ExecuteInterceptors(ctx *model.Ctx, channel chan *model.ChunkBodies) ChainI
 		state := Default
 		for _, mat := range matchers {
 			state, chunk = mat.scan(chunk, over)
-			if state != Default {
+			if state == Matched {
 				break
 			}
 		}
