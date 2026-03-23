@@ -11,23 +11,18 @@ import (
 	"github.com/gofiber/contrib/v3/zap"
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/recover"
-	"github.com/xllm-go/g/env"
 	"github.com/xllm-go/g/interceptor"
 	"github.com/xllm-go/g/logger"
 	"github.com/xllm-go/g/model"
 )
 
 var (
-	con       = &container{}
-	panicFunc func(err interface{})
+	con    = &container{}
+	panics = make(map[fiber.Ctx]func(err interface{}))
 )
 
-func init() {
-	panicFunc = func(w interface{}) {
-		for yield := range env.Panics() {
-			yield(w)
-		}
-	}
+func OnError(ctx fiber.Ctx, f func(err interface{})) {
+	panics[ctx] = f
 }
 
 func Put(typed string, mod []string, f func(ctx *model.Ctx) error) {
@@ -93,10 +88,11 @@ func Initialized(addr string) {
 	app.Use(recover.New(recover.Config{
 		EnableStackTrace: true,
 		StackTraceHandler: func(ctx fiber.Ctx, err interface{}) {
-			if panicFunc != nil {
-				panicFunc(err)
-			}
 			logger.Sugar().Errorf("panic: %v", err)
+			if yield, ok := panics[ctx]; ok {
+				delete(panics, ctx)
+				yield(err)
+			}
 		},
 	}))
 
@@ -104,9 +100,11 @@ func Initialized(addr string) {
 		Logger: logger.Logger(),
 	}))
 
-	app.Use(func(ctx fiber.Ctx) error {
+	app.Use(func(ctx fiber.Ctx) (err error) {
 		logger.Sugar().Infof("-------------------- NEW START --------------------")
-		return ctx.Next()
+		err = ctx.Next()
+		delete(panics, ctx)
+		return
 	})
 
 	app.Get("/", index)

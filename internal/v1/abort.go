@@ -30,6 +30,7 @@ func newAbort(ctx fiber.Ctx) (context.Context, context.CancelFunc) {
 		case <-cctx.done:
 			// 已经关闭
 		default:
+			cctx.done <- struct{}{}
 			cctx.err = context.Canceled
 			close(cctx.done)
 		}
@@ -63,6 +64,7 @@ func newAbort(ctx fiber.Ctx) (context.Context, context.CancelFunc) {
 			select {
 			case <-cctx.done:
 			default:
+				cctx.done <- struct{}{}
 				cctx.err = context.Canceled
 				close(cctx.done)
 			}
