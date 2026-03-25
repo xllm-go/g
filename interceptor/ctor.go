@@ -201,12 +201,13 @@ func ExecuteInterceptors(ctx *model.Ctx, channel chan *model.ChunkBodies) ChainI
 		state := Default
 		for _, mat := range matchers {
 			state, chunk = mat.scan(chunk, over)
-			if state == Matched {
+			if state == Matching {
 				break
 			}
 		}
 
 		if block, ok := model.GetValue[string, string](ctx.Record, ToolCall); ok {
+			ctx.Record.Del(ToolCall)
 			channel <- model.CreateFunction(block, completion.Stream)
 			ctx.Cancel()
 		}
