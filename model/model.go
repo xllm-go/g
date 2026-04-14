@@ -29,6 +29,8 @@ type Completion struct {
 	TopP          float32             `json:"top_p,omitempty"`
 	Stream        bool                `json:"stream,omitempty"`
 	ToolChoice    interface{}         `json:"tool_choice,omitempty"`
+
+	Extra Record[string, any] `json:"extra"`
 }
 
 type CompletionMessage = Record[string, any]
@@ -41,6 +43,8 @@ type Generation struct {
 	Size    string `json:"size"`
 	Style   string `json:"style"`
 	Quality string `json:"quality"`
+
+	Extra Record[string, any] `json:"extra"`
 }
 
 type Response struct {
