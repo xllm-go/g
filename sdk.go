@@ -14,7 +14,7 @@ type interfaces struct {
 func Sdk() interface {
 	Env() *env.Environ
 	Support(...string) *builder
-	OnInitialized(func())
+	OnInitialized(func(), ...int)
 	OnExited(func())
 	OnError(fiber.Ctx, func(err interface{}))
 } {
@@ -29,8 +29,8 @@ func (interfaces) Env() *env.Environ {
 	return env.Env
 }
 
-func (interfaces) OnInitialized(f func()) {
-	env.AddInitialized(f)
+func (interfaces) OnInitialized(f func(), p ...int) {
+	env.AddInitialized(f, p...)
 }
 
 func (interfaces) OnExited(f func()) {

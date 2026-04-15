@@ -1,22 +1,40 @@
 package env
 
 import (
+	"cmp"
 	"os"
 	"os/signal"
+	"slices"
 	"syscall"
 )
 
 var (
-	inits = make([]func(), 0)
+	inits = make([]initialized, 0)
 	exits = make([]func(), 0)
 )
 
-func AddInitialized(apply func()) { inits = append(inits, apply) }
-func AddExited(apply func())      { exits = append(exits, apply) }
+type initialized struct {
+	apply    func()
+	priority int
+}
+
+func AddExited(apply func()) { exits = append(exits, apply) }
+func AddInitialized(apply func(), priority ...int) {
+	p := 10
+	if len(priority) > 0 {
+		p = priority[0]
+	}
+
+	inits = append(inits, initialized{apply, p})
+	slices.SortFunc(inits, func(a, b initialized) int {
+		return cmp.Compare(a.priority, b.priority)
+	})
+}
 
 func Initialized() {
+
 	for _, yield := range inits {
-		yield()
+		yield.apply()
 	}
 
 	osSignal := make(chan os.Signal, 1)

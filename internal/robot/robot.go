@@ -15,10 +15,10 @@ import (
 	"sync"
 	"time"
 
-	v1 "github.com/bincooo/ago/internal/v1"
 	"github.com/elazarl/goproxy"
 	"github.com/go-vgo/robotgo"
 	"github.com/robotn/gohook"
+	"github.com/xllm-go/g/env"
 
 	_ "embed"
 )
@@ -88,7 +88,7 @@ func Run(proxies string) {
 
 		// TODO -
 
-		slice := v1.Env.GetStringSlice("hook")
+		slice := env.Env.GetStringSlice("hook")
 		for _, content := range slice {
 			split := strings.Split(content, "|")
 			if len(split) < 3 {
@@ -166,10 +166,10 @@ func runAuto(ctx context.Context) {
 		return
 	}
 
-	waitMillisecond := v1.Env.GetInt64("app.waitMillisecond")
+	waitMillisecond := env.Env.GetInt64("app.waitMillisecond")
 	sW, sH := robotgo.GetScreenSize()
 	var events []map[string]interface{}
-	err = v1.Env.UnmarshalKey("app.events", &events)
+	err = env.Env.UnmarshalKey("app.events", &events)
 	if err != nil {
 		log.Println(err)
 	}
@@ -177,8 +177,8 @@ func runAuto(ctx context.Context) {
 	x := 0
 	y := 0
 
-	ax := v1.Env.GetInt("app.x")
-	ay := v1.Env.GetInt("app.y")
+	ax := env.Env.GetInt("app.x")
+	ay := env.Env.GetInt("app.y")
 	if ax != 0 && ay != 0 {
 		x = sW/2 + ax
 		y = sH/2 + ay
@@ -230,21 +230,21 @@ func runAuto(ctx context.Context) {
 }
 
 func runApp(ctx context.Context) (pid int, err error) {
-	fpid, err := robotgo.FindIds(v1.Env.GetString("app.name"))
+	fpid, err := robotgo.FindIds(env.Env.GetString("app.name"))
 	if err != nil {
 		log.Println(err)
 	}
 
 	if len(fpid) == 0 {
 		go func() {
-			_, err = robotgo.Run(v1.Env.GetString("app.path"))
+			_, err = robotgo.Run(env.Env.GetString("app.path"))
 			if err != nil {
 				log.Printf("starting err: %v", err)
 			}
 		}()
 
 		time.Sleep(time.Second)
-		fpid, err = robotgo.FindIds(v1.Env.GetString("app.name"))
+		fpid, err = robotgo.FindIds(env.Env.GetString("app.name"))
 	}
 
 	if isCancel(ctx) {
